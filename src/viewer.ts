@@ -241,8 +241,8 @@ export class RobotArmViewer {
     // The arm sweeps ±55° and reaches forward: pad the rest-pose sphere so
     // the cycle stays in frame. The exploded stack is tall and mostly
     // vertical, so it needs less padding to stay in view.
-    this.radii[view] = Math.max(sphere.radius * (view === "exploded" ? 1.0 : 1.2), 1.2);
-    this.centers[view] = new THREE.Vector3(0, (bounds.min.y + bounds.max.y) * 0.45, 0);
+    this.radii[view] = Math.max(sphere.radius * (view === "exploded" ? 1.1 : 1.2), 1.2);
+    this.centers[view] = new THREE.Vector3(0, (bounds.min.y + bounds.max.y) * (view === "exploded" ? 0.52 : 0.45), 0);
   }
 
   private applyExplode(t: number): void {
