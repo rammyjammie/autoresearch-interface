@@ -9,7 +9,28 @@ a part. One viewer, one model picker, two models so far:
 | Model | Parts | Clip | What's inside |
 | --- | --- | --- | --- |
 | **Six-axis robot arm** | 141 (120 internal, 18 shell, 3 chips) | `Pick_And_Place`, 9.6 s, 14 tracks | Servo stacks, harmonic drives, crossed-roller bearings, wrist drive shafts and bevel pinions, rack-and-pinion gripper; rotors spin at their reduction ratio |
-| **Induction motor** | 34 (22 internal, 9 shell, 3 chips) | `Run`, 6 s, 1 track | Foot-mounted TEFC frame with fins, end bells, fan cowl and terminal box over a stator with copper end windings, a cage rotor with end rings, keyed shaft, two ball bearings, and the cooling fan |
+| **Induction motor** | 34 (22 internal, 9 shell, 3 chips) | `Run`, 6 s, 1 track | Foot-mounted TEFC frame with fins, end bells, fan cowl and terminal box over a 36-slot stator with coils and end windings, a 28-bar cage rotor with end rings on a keyed shaft with a coupling half, two ball bearings, and a seven-blade fan. Only parts that carry a fault signature or the silhouette; no nameplate, lifting eye, or terminal block |
+
+The motor's root carries `extras.signature` (rotor 29.5 Hz, line 60 Hz, 36
+slots, 28 bars, 7 blades, 9 balls), so slot-pass, bar-pass, blade-pass and
+bearing lines in the spectra are derived from the geometry's own counts.
+
+### Where the motor's sensors sit, and why
+
+- **Drive-end bearing housing, horizontal radial (3 o'clock).** Bearings
+  are the leading failure mode and the drive end carries the load; on a
+  foot-mounted machine the horizontal direction usually has the highest
+  amplitude, so it is the primary accelerometer location.
+- **Non-drive-end bearing housing, vertical radial (12 o'clock).** The
+  second bearing, read in the orthogonal direction so misalignment and
+  imbalance (1×, 2×) separate from bearing lines.
+- **Frame mid-length beside the stator.** Stray-flux coil and winding
+  temperature: the place to read line-frequency harmonics, slot-pass, and
+  bar-pass without opening the machine.
+
+A full survey would add an axial reading on the drive-end cap for thrust
+and misalignment, and a current clamp at the terminal box for rotor-bar
+sidebands; neither is a chip on the housing, so neither is a chip here.
 
 - `public/models/<Model>_Assembled.glb` — drop-in for the Nautilus library
   (`public/models/library/`).

@@ -166,7 +166,7 @@ viewer.onSelect = (part) => {
   // chip nearest to it.
   const subject = part.layer === "sensor" && part.sensor ? viewer.nearestInternal(part.sensor) ?? part : part;
   spectraSection.hidden = false;
-  renderSpectra(spectraHost, tooltip, host, part, subject);
+  renderSpectra(spectraHost, tooltip, host, part, subject, viewer.signature);
   spectraSection.scrollIntoView({ block: "start", behavior: "smooth" });
 };
 
@@ -232,6 +232,10 @@ async function selectModel(id: string): Promise<void> {
     document.getElementById("fact-cycle")!.textContent = viewer.clip ? `${viewer.clip.duration.toFixed(1)} s loop · ${viewer.clip.tracks.length} track${viewer.clip.tracks.length === 1 ? "" : "s"}` : "—";
     document.getElementById("fact-joints")!.textContent = joints.length ? `${joints.length} · ${joints.join(", ")}` : "none · fixed frame, spinning rotor";
     document.getElementById("fact-sensors")!.textContent = viewer.sensors.map((sensor) => `${sensor.label} → ${sensor.covers.map((c) => ASSEMBLY_LABELS[c] ?? c).join("/")}`).join(" · ");
+    const sig = viewer.signature;
+    document.getElementById("fact-signature")!.textContent = Object.keys(sig).length
+      ? [sig.rotorHz && `rotor ${sig.rotorHz} Hz`, sig.lineHz && `line ${sig.lineHz} Hz`, sig.statorSlots && `${sig.statorSlots} slots`, sig.rotorBars && `${sig.rotorBars} bars`, sig.fanBlades && `${sig.fanBlades} blades`, sig.bearingBalls && `${sig.bearingBalls} balls`].filter(Boolean).join(" · ")
+      : "per-joint rotor speeds · reduction 30:1";
     document.getElementById("fact-materials")!.textContent = [...new Set(viewer.parts.map((part) => part.material))].join(" · ");
     document.getElementById("fact-files")!.textContent = `${model.files.assembled.file} (${(model.files.assembled.bytes / 1024).toFixed(0)} KB) · ${model.files.exploded.file} (${(model.files.exploded.bytes / 1024).toFixed(0)} KB)`;
     setStatus(describe());

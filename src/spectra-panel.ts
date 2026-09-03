@@ -1,4 +1,4 @@
-import { BINS, formatHz, MODALITIES, spectrumFor, type Modality, type ModalityId, type Spectrum } from "./spectra";
+import { BINS, formatHz, MODALITIES, spectrumFor, type Modality, type ModalityId, type Signature, type Spectrum } from "./spectra";
 import type { PartInfo } from "./viewer";
 
 // The stacked-histogram panel: one small-multiple per enabled modality,
@@ -149,7 +149,7 @@ function table(spectra: Spectrum[]): HTMLElement {
  * whose signature is synthesized (the clicked part, or the internal part a
  * clicked chip sits over).
  */
-export function renderSpectra(container: HTMLElement, tooltip: HTMLElement, host: HTMLElement, part: PartInfo, subject: PartInfo): void {
+export function renderSpectra(container: HTMLElement, tooltip: HTMLElement, host: HTMLElement, part: PartInfo, subject: PartInfo, signature: Signature = {}): void {
   const sensor = subject.sensor;
   container.replaceChildren();
   if (!sensor) {
@@ -172,7 +172,7 @@ export function renderSpectra(container: HTMLElement, tooltip: HTMLElement, host
     const active: Spectrum[] = [];
     for (const modality of MODALITIES) {
       if (!enabled.has(modality.id)) continue;
-      const spectrum = spectra.get(modality.id) ?? spectrumFor(sensor.id, subject.name, modality, subject.sensorDistance);
+      const spectrum = spectra.get(modality.id) ?? spectrumFor(sensor.id, subject.name, modality, subject.sensorDistance, signature);
       spectra.set(modality.id, spectrum);
       active.push(spectrum);
       stack.append(figure(spectrum, tooltip, host));

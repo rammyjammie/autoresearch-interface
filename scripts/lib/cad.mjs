@@ -118,6 +118,29 @@ export function gear(rPitch, teeth, thickness, rBore = 0, axis = "y", internal =
   return orientZ(geometry, axis);
 }
 
+/**
+ * Slotted ring: a stator core. `slots` rectangular notches of `depth` cut
+ * into the bore, each `widthFraction` of the bore pitch wide, centered on
+ * angle i·2π/slots so coils placed with `radialArray` at phase 0 land in
+ * them.
+ */
+export function slottedRing(rOuter, rBore, slots, depth, widthFraction, height, axis = "y") {
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, rOuter, 0, Math.PI * 2, false);
+  const points = [];
+  const step = (Math.PI * 2) / slots;
+  const half = (step * widthFraction) / 2;
+  const at = (angle, r) => new THREE.Vector2(Math.cos(angle) * r, Math.sin(angle) * r);
+  for (let i = 0; i < slots; i += 1) {
+    const a0 = i * step;
+    points.push(at(a0 - half, rBore), at(a0 - half, rBore + depth), at(a0 + half, rBore + depth), at(a0 + half, rBore), at(a0 + step / 2, rBore));
+  }
+  shape.holes.push(new THREE.Path(points));
+  const geometry = indexed(new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, curveSegments: SEGMENTS }));
+  geometry.translate(0, 0, -height / 2);
+  return orientZ(geometry, axis);
+}
+
 export function torus(radius, tube, axis = "y", radial = 10, tubular = 32) {
   const geometry = new THREE.TorusGeometry(radius, tube, radial, tubular);
   // TorusGeometry lies in XY (axis Z).

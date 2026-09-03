@@ -101,6 +101,8 @@ test("induction motor: loads from the loadout and by deep link, spins, explodes,
   expect(s.parts.length).toBeLessThan(45);
   expect(s.parts.filter((part) => part.layer === "shell").length).toBeGreaterThanOrEqual(8);
   expect(s.parts.some((part) => part.name === "Cooling_Fan" && part.assembly === "Rotor")).toBe(true);
+  expect(s.parts.map((part) => part.name)).toEqual(expect.arrayContaining(["Stator_Coils", "Rotor_Bars", "Coupling_Half"]));
+  expect(s.parts.map((part) => part.name)).not.toEqual(expect.arrayContaining(["Nameplate"]));
 
   // The rotor spins on its own.
   await page.waitForTimeout(600);
@@ -123,6 +125,12 @@ test("induction motor: loads from the loadout and by deep link, spins, explodes,
   await expect(spectra.locator("figure.spectrum")).toHaveCount(5);
   await expect(spectra.getByText(/BPFO/).first()).toBeVisible();
   await page.screenshot({ path: "test-results/motor-internals-spectra.png" });
+
+  // The cage: bar-pass falls out of the model's own bar count (28 × 29.5 Hz).
+  await page.locator('button[data-part="Rotor_Bars"]').click();
+  await expect(spectra.getByText("Rotor Bars")).toBeVisible();
+  await expect(spectra.locator('figure[data-modality="accel-x"]').getByText(/Bar pass · 826 Hz/)).toBeVisible();
+  expect(await page.evaluate(() => document.getElementById("fact-signature")!.textContent)).toContain("36 slots · 28 bars");
 
   // Exploded, shell on, still spinning.
   await page.getByRole("button", { name: "Full model" }).click();

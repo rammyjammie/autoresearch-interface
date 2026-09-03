@@ -31,6 +31,20 @@ export const MODALITIES: Modality[] = [
 
 export const BINS = 48;
 
+/**
+ * What a model knows about itself (root `extras.signature`): rotor speed,
+ * line frequency, and the counts that set slot-pass, bar-pass, blade-pass
+ * and bearing lines. Anything missing falls back to a sensible default.
+ */
+export interface Signature {
+  rotorHz?: number;
+  lineHz?: number;
+  statorSlots?: number;
+  rotorBars?: number;
+  fanBlades?: number;
+  bearingBalls?: number;
+}
+
 export interface SpectrumPeak {
   hz: number;
   label: string;
@@ -52,7 +66,6 @@ export interface Spectrum {
 const ROTOR_HZ: Record<string, number> = { J1: 45, J2: 52, J3: 58, J4: 66, J5: 74, J6: 80 };
 const LINE_HZ = 60;
 const INDUCTION_ROTOR_HZ = 29.5;
-const FAN_BLADES = 7;
 
 interface Family {
   /** Which spectral lines this part radiates, with relative strengths. */
@@ -67,19 +80,29 @@ function rotorHzFor(part: string): number {
 }
 
 /** The spectral signature of a part, keyed off its library name. */
-function familyFor(part: string): Family {
-  const rotor = rotorHzFor(part);
+function familyFor(part: string, signature: Signature): Family {
+  const isJoint = /^J\d_/.test(part);
+  const rotor = signature.rotorHz ?? rotorHzFor(part);
+  const line = signature.lineHz ?? LINE_HZ;
+  const slots = signature.statorSlots ?? 12;
+  const bars = signature.rotorBars ?? 24;
+  const blades = signature.fanBlades ?? 7;
+  const balls = signature.bearingBalls ?? (isJoint ? 17 : 9);
   const name = part.toLowerCase();
   const lines: Family["lines"] = [];
   let hump: Family["hump"];
 
   if (/fan|hub/.test(name)) {
-    lines.push({ hz: rotor * FAN_BLADES, label: "Blade pass", strength: 1 }, { hz: rotor, label: "1× rotor", strength: 0.5 }, { hz: rotor * FAN_BLADES * 2, label: "2× blade pass", strength: 0.35 });
+    lines.push({ hz: rotor * blades, label: "Blade pass", strength: 1 }, { hz: rotor, label: "1× rotor", strength: 0.5 }, { hz: rotor * blades * 2, label: "2× blade pass", strength: 0.35 });
     hump = { hz: 1100, width: 300, strength: 0.3 };
-  } else if (/rotor|motor_shaft|wave_generator|end_ring|shaft_key/.test(name)) {
-    lines.push({ hz: rotor, label: "1× rotor", strength: 1 }, { hz: rotor * 2, label: "2× rotor", strength: 0.45 }, { hz: rotor * 3, label: "3×", strength: 0.2 });
-  } else if (/stator|winding|encoder_board|terminal/.test(name)) {
-    lines.push({ hz: LINE_HZ * 2, label: "2× line", strength: 0.9 }, { hz: rotor * 12, label: "Slot pass", strength: 0.55 }, { hz: rotor * 24, label: "2× slot", strength: 0.25 });
+  } else if (/rotor_bars|end_ring/.test(name)) {
+    // Cage faults: bar-pass in flux, plus the rotor lines. (Broken-bar
+    // sidebands at twice slip sit inside the 1× bin at this resolution.)
+    lines.push({ hz: rotor * bars, label: "Bar pass", strength: 1 }, { hz: rotor, label: "1× rotor", strength: 0.7 }, { hz: rotor * 2, label: "2× rotor", strength: 0.3 });
+  } else if (/rotor|motor_shaft|wave_generator|shaft_key|coupling/.test(name)) {
+    lines.push({ hz: rotor, label: "1× rotor", strength: 1 }, { hz: rotor * 2, label: "2× rotor", strength: /coupling/.test(name) ? 0.8 : 0.45 }, { hz: rotor * 3, label: "3×", strength: 0.2 });
+  } else if (/stator|winding|coil|encoder_board|terminal/.test(name)) {
+    lines.push({ hz: line * 2, label: "2× line", strength: 0.9 }, { hz: rotor * slots, label: "Slot pass", strength: 0.55 }, { hz: rotor * slots * 2, label: "2× slot", strength: 0.25 });
   } else if (/brake|encoder_disc/.test(name)) {
     lines.push({ hz: rotor, label: "1× rotor", strength: 0.6 }, { hz: rotor * 0.5, label: "½× rub", strength: 0.35 });
   } else if (/spline|flexspline|gear|pinion|rack/.test(name)) {
@@ -90,9 +113,8 @@ function familyFor(part: string): Family {
   } else if (/bearing|race|rollers|balls/.test(name)) {
     // Robot joint bearings turn at output speed (after the reduction);
     // the motor's shaft bearings turn at rotor speed.
-    const shaftHz = /^j\d_/.test(name) ? rotor / 30 : rotor;
-    const n = /^j\d_/.test(name) ? 17 : 9;
-    lines.push({ hz: shaftHz * n * 0.4, label: "BPFO", strength: 0.8 }, { hz: shaftHz * n * 0.6, label: "BPFI", strength: 0.55 }, { hz: shaftHz * n * 0.8, label: "2× BPFO", strength: 0.3 });
+    const shaftHz = isJoint ? rotor / 30 : rotor;
+    lines.push({ hz: shaftHz * balls * 0.4, label: "BPFO", strength: 0.8 }, { hz: shaftHz * balls * 0.6, label: "BPFI", strength: 0.55 }, { hz: shaftHz * balls * 0.8, label: "2× BPFO", strength: 0.3 });
     hump = { hz: 900, width: 260, strength: 0.35 };
   } else if (/shaft|flange/.test(name)) {
     lines.push({ hz: rotor / 30, label: "1× output", strength: 0.7 }, { hz: rotor, label: "1× rotor", strength: 0.35 });
@@ -115,7 +137,7 @@ function weight(modality: ModalityId, label: string, part: string): number {
   const axis = /_Rotation|_Roll|_Flange|^Shaft|End_Ring/.test(part) ? "z" : "x";
   switch (modality) {
     case "flux":
-      return /line|slot|rotor/i.test(label) ? 1.2 : 0.12;
+      return /line|slot|rotor|bar/i.test(label) ? 1.2 : 0.12;
     case "audio":
       return /mesh|sideband|slot/i.test(label) ? 1.1 : 0.45;
     case "accel-x":
@@ -144,8 +166,8 @@ function hash01(input: string): number {
  * from chip to part attenuates the mechanical lines, so the same fault
  * reads stronger from the chip that sits on it.
  */
-export function spectrumFor(sensorId: string, part: string, modality: Modality, distance: number): Spectrum {
-  const family = familyFor(part);
+export function spectrumFor(sensorId: string, part: string, modality: Modality, distance: number, signature: Signature = {}): Spectrum {
+  const family = familyFor(part, signature);
   const attenuation = 1 / (1 + distance * 1.6);
   const bins: number[] = [];
   const width = modality.fmax / BINS;

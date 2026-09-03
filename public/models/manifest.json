@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-03T18:33:57.602Z",
+  "generated": "2026-09-03T18:51:02.756Z",
   "models": [
     {
       "id": "six-axis-robot-arm",
@@ -30,15 +30,15 @@
     {
       "id": "induction-motor",
       "label": "Induction motor",
-      "description": "Foot-mounted TEFC induction motor: finned frame, two end bells, fan cowl, terminal box over a stator, cage rotor, keyed shaft, two bearings, and the fan.",
+      "description": "Foot-mounted TEFC induction motor: finned frame, end bells, fan cowl and terminal box over a 36-slot stator with coils, a 28-bar cage rotor on a keyed shaft with coupling half, two ball bearings, and a seven-blade fan.",
       "files": {
         "assembled": {
           "file": "Induction_Motor_Assembled.glb",
-          "bytes": 443676
+          "bytes": 494856
         },
         "exploded": {
           "file": "Induction_Motor_Exploded.glb",
-          "bytes": 443616
+          "bytes": 494868
         }
       },
       "parts": 34,

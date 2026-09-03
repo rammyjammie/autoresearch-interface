@@ -58,6 +58,8 @@ export class RobotArmViewer {
   parts: PartInfo[] = [];
   sensors: SensorInfo[] = [];
   clip: THREE.AnimationClip | null = null;
+  /** Root `extras.signature`: rotor speed and the counts behind its spectral lines. */
+  signature: Record<string, number> = {};
 
   private treated: TreatedPart[] = [];
   private byMesh = new Map<THREE.Mesh, PartInfo>();
@@ -174,6 +176,14 @@ export class RobotArmViewer {
 
     const root = gltf.scene as THREE.Group;
     this.root = root;
+    // The exporter wraps a non-Scene root in its own scene, so the model
+    // root (and its extras) is the first node under gltf.scene.
+    let signature: Record<string, number> = {};
+    root.traverse((node) => {
+      const found = node.userData.signature as Record<string, number> | undefined;
+      if (found && !Object.keys(signature).length) signature = found;
+    });
+    this.signature = signature;
     this.treated = applyReefTreatment(root);
 
     // Sensor chips first, so parts can be matched to their nearest chip.
