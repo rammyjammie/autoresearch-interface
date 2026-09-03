@@ -66,15 +66,17 @@ function histogram(spectrum: Spectrum, tooltip: HTMLElement, host: HTMLElement):
     chart.append(svg("path", { d: barPath(x, y, barWidth, h), fill: modality.color, class: "bar" }));
     const hit = svg("rect", { x: MARGIN.left + index * slot, y: MARGIN.top, width: slot, height: PLOT_HEIGHT, fill: "transparent", class: "hit" });
     const lo = index * (modality.fmax / BINS);
-    hit.addEventListener("pointerenter", () => {
-      tooltip.replaceChildren(el("span", undefined, `${formatHz(lo)} – ${formatHz(lo + modality.fmax / BINS)}`), el("small", undefined, `${modality.label} · ${value.toFixed(2)} rel.`));
-      tooltip.hidden = false;
-    });
-    hit.addEventListener("pointermove", (event) => {
+    const place = (event: PointerEvent) => {
       const rect = host.getBoundingClientRect();
       tooltip.style.left = `${event.clientX - rect.left}px`;
       tooltip.style.top = `${event.clientY - rect.top}px`;
+    };
+    hit.addEventListener("pointerenter", (event) => {
+      tooltip.replaceChildren(el("span", undefined, `${formatHz(lo)} – ${formatHz(lo + modality.fmax / BINS)}`), el("small", undefined, `${modality.label} · ${value.toFixed(2)} rel.`));
+      place(event);
+      tooltip.hidden = false;
     });
+    hit.addEventListener("pointermove", place);
     hit.addEventListener("pointerleave", () => {
       tooltip.hidden = true;
     });
