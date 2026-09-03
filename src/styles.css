@@ -203,11 +203,12 @@ button {
   right: 14px;
   bottom: 52px;
   z-index: 5;
-  width: 280px;
+  width: 344px;
   overflow: auto;
   border: 1px solid var(--border);
-  background: rgba(7, 16, 27, 0.92);
+  background: rgba(7, 16, 27, 0.94);
   backdrop-filter: blur(6px);
+  scroll-behavior: smooth;
 }
 
 .panel section {
@@ -217,6 +218,20 @@ button {
 
 .panel section:last-child {
   border-bottom: 0;
+}
+
+.hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hint strong {
+  color: var(--text);
+}
+
+.is-internals .hint-section {
+  display: none;
 }
 
 .facts {
@@ -245,12 +260,54 @@ button {
   overflow-wrap: anywhere;
 }
 
-.parts {
+/* --- parts list (grouped by assembly) --------------------------------------- */
+
+.parts,
+.part-group {
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
   gap: 2px;
+}
+
+.part-group {
+  margin: 2px 0 6px;
+}
+
+.parts details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.parts details summary::-webkit-details-marker {
+  display: none;
+}
+
+.parts details summary::before {
+  content: "+";
+  margin-right: 8px;
+  color: var(--accent);
+}
+
+.parts details[open] summary::before {
+  content: "−";
+}
+
+.parts details summary small {
+  margin-left: auto;
+  color: var(--dim);
 }
 
 .parts button {
@@ -259,7 +316,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 8px;
+  padding: 4px 8px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--text);
@@ -274,6 +331,19 @@ button {
   font-size: 9px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.parts button[data-layer="shell"] {
+  color: var(--muted);
+}
+
+.parts button[data-layer="sensor"] small {
+  color: var(--accent);
+}
+
+.is-internals .parts button[data-layer="shell"] {
+  opacity: 0.4;
 }
 
 .parts button:hover,
@@ -285,11 +355,186 @@ button {
 .parts button[aria-pressed="true"] {
   border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   background: var(--accent-soft);
+  color: var(--text);
 }
 
 .parts button[aria-pressed="true"] small {
   color: var(--accent);
 }
+
+/* --- sensor spectra ----------------------------------------------------------- */
+
+.spectra-section {
+  border-left: 2px solid var(--accent);
+}
+
+.spectra-header {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 10px;
+}
+
+.spectra-header strong {
+  font-size: 13px;
+}
+
+.spectra-header span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.spectra-empty {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.modality-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.modality-toggles button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.modality-toggles button[aria-pressed="true"] {
+  border-color: var(--border-bright);
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+.modality-toggles button[aria-pressed="false"] .swatch {
+  opacity: 0.3;
+}
+
+.modality-toggles button:hover,
+.modality-toggles button:focus-visible {
+  border-color: var(--accent);
+}
+
+.swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+}
+
+.spectrum-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.spectrum {
+  margin: 0;
+  padding: 6px 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.spectrum figcaption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.spectrum figcaption small {
+  margin-left: auto;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.spectrum-svg {
+  display: block;
+  margin-top: 2px;
+  overflow: visible;
+}
+
+.spectrum-svg .grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.spectrum-svg .axis {
+  stroke: var(--border-bright);
+  stroke-width: 1;
+}
+
+.spectrum-svg .tick {
+  fill: var(--dim);
+  font-family: var(--mono);
+  font-size: 8px;
+}
+
+.spectrum-svg .label {
+  fill: var(--text);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+}
+
+.spectrum-svg .hit:hover + .bar,
+.spectrum-svg .hit:hover {
+  cursor: crosshair;
+}
+
+.spectrum-table summary {
+  margin-top: 4px;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.table-scroll {
+  max-height: 180px;
+  overflow: auto;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+}
+
+.spectrum-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.spectrum-table th,
+.spectrum-table td {
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.spectrum-table th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  color: var(--dim);
+  font-weight: 400;
+}
+
+/* --- tooltip + status ----------------------------------------------------------- */
 
 .tooltip {
   position: absolute;
@@ -343,7 +588,7 @@ button {
     bottom: 48px;
     left: 10px;
     width: auto;
-    max-height: 38vh;
+    max-height: 42vh;
   }
 
   .stage-toolbar {

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-03T16:02:40.566Z",
+  "generated": "2026-09-03T16:38:55.189Z",
   "models": [
     "Six_Axis_Robot_Arm"
   ],
@@ -11,14 +11,26 @@
     {
       "view": "assembled",
       "file": "Six_Axis_Robot_Arm_Assembled.glb",
-      "parts": 28,
-      "bytes": 299928
+      "parts": 141,
+      "layers": {
+        "shell": 18,
+        "internal": 120,
+        "sensor": 3
+      },
+      "tracks": 14,
+      "bytes": 2048416
     },
     {
       "view": "exploded",
       "file": "Six_Axis_Robot_Arm_Exploded.glb",
-      "parts": 28,
-      "bytes": 300100
+      "parts": 141,
+      "layers": {
+        "shell": 18,
+        "internal": 120,
+        "sensor": 3
+      },
+      "tracks": 14,
+      "bytes": 2048996
     }
   ]
 }

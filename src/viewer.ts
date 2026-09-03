@@ -9,17 +9,26 @@ import { applyReefTreatment, emphasize, type TreatedPart } from "./treatment";
 // rotation-first, clamped near the machine, never under the floor.
 
 export type ViewMode = "assembled" | "exploded";
+export type LayerMode = "full" | "internals";
+export type Layer = "shell" | "internal" | "sensor";
 
 export interface PartInfo {
   name: string;
   label: string;
   material: string;
+  layer: Layer;
+  assembly: string;
   mesh: THREE.Mesh;
+  /** Nearest sensor chip (rest pose) and its distance in meters. */
+  sensor: SensorInfo | null;
+  sensorDistance: number;
 }
 
-export interface MountInfo {
+export interface SensorInfo {
+  id: string;
   label: string;
-  node: THREE.Object3D;
+  covers: string[];
+  mesh: THREE.Mesh;
 }
 
 interface ExplodeTarget {
@@ -36,7 +45,7 @@ const EDGE = new THREE.Color("#2bd9c7");
 const easeInOut = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 
 export function humanize(name: string): string {
-  return name.replace(/^mount:/, "").replace(/_/g, " ").replace(/\b([A-Z])(\d)\b/g, "$1$2");
+  return name.replace(/^Sensor_Chip_/, "Sensor chip · ").replace(/_/g, " ");
 }
 
 export class RobotArmViewer {
@@ -47,10 +56,11 @@ export class RobotArmViewer {
   readonly clock = new THREE.Clock();
 
   parts: PartInfo[] = [];
-  mounts: MountInfo[] = [];
+  sensors: SensorInfo[] = [];
   clip: THREE.AnimationClip | null = null;
 
   private treated: TreatedPart[] = [];
+  private byMesh = new Map<THREE.Mesh, PartInfo>();
   private mixer: THREE.AnimationMixer | null = null;
   private root: THREE.Group | null = null;
   private explodeTargets: ExplodeTarget[] = [];
@@ -64,14 +74,13 @@ export class RobotArmViewer {
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2(2, 2);
   private pointerInside = false;
-  private shadowPlane: THREE.Mesh;
-  private slab: THREE.Mesh;
 
   playing = true;
   speed = 1;
   view: ViewMode = "assembled";
+  layers: LayerMode = "full";
 
-  onHover: ((part: PartInfo | MountInfo | null, clientX: number, clientY: number) => void) | null = null;
+  onHover: ((part: PartInfo | null, clientX: number, clientY: number) => void) | null = null;
   onSelect: ((part: PartInfo | null) => void) | null = null;
 
   constructor(private readonly host: HTMLElement) {
@@ -109,27 +118,25 @@ export class RobotArmViewer {
     const fill = new THREE.DirectionalLight("#2bd9c7", 0.35 * Math.PI);
     fill.position.set(-3, 2, -4);
     this.scene.add(fill);
-    const hemi = new THREE.HemisphereLight("#8fb3c8", "#0a1522", 0.45);
-    this.scene.add(hemi);
+    this.scene.add(new THREE.HemisphereLight("#8fb3c8", "#0a1522", 0.45));
 
     // Slab + contact shadow: navy concrete, soft shadow, no grid. The slab
     // runs out past the fog so it has no visible horizon.
-    this.slab = new THREE.Mesh(
+    const slab = new THREE.Mesh(
       new THREE.CircleGeometry(60, 96),
       new THREE.MeshStandardMaterial({ color: "#050a12", metalness: 0.4, roughness: 0.9 }),
     );
-    this.slab.rotation.x = -Math.PI / 2;
-    this.slab.position.y = FLOOR_Y - 0.01;
-    this.scene.add(this.slab);
-    this.shadowPlane = new THREE.Mesh(
+    slab.rotation.x = -Math.PI / 2;
+    slab.position.y = FLOOR_Y - 0.01;
+    this.scene.add(slab);
+    const shadowPlane = new THREE.Mesh(
       new THREE.PlaneGeometry(40, 40),
       new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.55 }),
     );
-    this.shadowPlane.rotation.x = -Math.PI / 2;
-    this.shadowPlane.position.y = FLOOR_Y;
-    this.shadowPlane.receiveShadow = true;
-    this.scene.add(this.shadowPlane);
-
+    shadowPlane.rotation.x = -Math.PI / 2;
+    shadowPlane.position.y = FLOOR_Y;
+    shadowPlane.receiveShadow = true;
+    this.scene.add(shadowPlane);
     this.scene.fog = new THREE.Fog(BACKGROUND, 12, 30);
 
     this.resize();
@@ -157,31 +164,21 @@ export class RobotArmViewer {
     const root = gltf.scene as THREE.Group;
     this.root = root;
     this.treated = applyReefTreatment(root);
-    this.parts = this.treated.map(({ mesh, material }) => ({
-      name: mesh.name,
-      label: humanize(mesh.name),
-      material: material.name,
-      mesh,
-    }));
 
-    // Explode targets: any node authored with `extras.explode`.
+    // Sensor chips first, so parts can be matched to their nearest chip.
+    this.sensors = [];
+    for (const { mesh } of this.treated) {
+      const sensor = mesh.userData.sensor as { id: string; label: string; covers: string[] } | undefined;
+      if (sensor) this.sensors.push({ ...sensor, mesh });
+    }
+
     this.explodeTargets = [];
-    this.mounts = [];
-    const mountNodes: THREE.Object3D[] = [];
     root.traverse((node) => {
       const offset = node.userData.explode as number[] | undefined;
       if (Array.isArray(offset) && offset.length === 3) {
         this.explodeTargets.push({ node, rest: node.position.clone(), offset: new THREE.Vector3(...offset) });
       }
-      // Loaders sanitize "mount:front" to "mountfront"; prefer the extras label.
-      const mountLabel = (node.userData.mount as string | undefined) ?? node.name.match(/^mount:?([a-z ]+)$/i)?.[1];
-      if (mountLabel && !(node as THREE.Mesh).isMesh) {
-        this.mounts.push({ label: mountLabel.trim().toLowerCase(), node });
-        mountNodes.push(node);
-      }
     });
-    // Pucks attach after the walk so the traversal never descends into them.
-    for (const node of mountNodes) node.add(makeMountPuck());
 
     // Re-ground to the contract (origin at floor center) and frame both
     // views before anything moves.
@@ -194,6 +191,35 @@ export class RobotArmViewer {
     this.measure("assembled", 0);
     this.measure("exploded", 1);
     this.applyExplode(this.explodeValue);
+    root.updateMatrixWorld(true);
+
+    // Part records, each paired with the chip nearest to it in the rest pose.
+    const chipPositions = this.sensors.map((sensor) => ({ sensor, position: sensor.mesh.getWorldPosition(new THREE.Vector3()) }));
+    const center = new THREE.Vector3();
+    this.parts = this.treated.map(({ mesh, material }) => {
+      new THREE.Box3().setFromObject(mesh).getCenter(center);
+      let nearest: SensorInfo | null = null;
+      let distance = Infinity;
+      for (const chip of chipPositions) {
+        const d = chip.position.distanceTo(center);
+        if (d < distance) {
+          distance = d;
+          nearest = chip.sensor;
+        }
+      }
+      return {
+        name: mesh.name,
+        label: humanize(mesh.name),
+        material: material.name,
+        layer: ((mesh.userData.layer as Layer | undefined) ?? "internal"),
+        assembly: (mesh.userData.assembly as string | undefined) ?? "Arm",
+        mesh,
+        sensor: nearest,
+        sensorDistance: Number.isFinite(distance) ? distance : 0,
+      };
+    });
+    this.byMesh = new Map(this.parts.map((part) => [part.mesh, part]));
+    this.setLayers(this.layers);
 
     this.clip = gltf.animations[0] ?? null;
     this.mixer = new THREE.AnimationMixer(root);
@@ -213,8 +239,9 @@ export class RobotArmViewer {
     const sphere = new THREE.Sphere();
     bounds.getBoundingSphere(sphere);
     // The arm sweeps ±55° and reaches forward: pad the rest-pose sphere so
-    // the cycle stays in frame.
-    this.radii[view] = Math.max(sphere.radius * 1.2, 1.2);
+    // the cycle stays in frame. The exploded stack is tall and mostly
+    // vertical, so it needs less padding to stay in view.
+    this.radii[view] = Math.max(sphere.radius * (view === "exploded" ? 1.0 : 1.2), 1.2);
     this.centers[view] = new THREE.Vector3(0, (bounds.min.y + bounds.max.y) * 0.45, 0);
   }
 
@@ -240,6 +267,16 @@ export class RobotArmViewer {
     this.frame(false);
   }
 
+  /** "internals" hides every shell mesh; chips and mechanism stay. */
+  setLayers(layers: LayerMode): void {
+    this.layers = layers;
+    for (const part of this.parts) {
+      part.mesh.visible = layers === "full" || part.layer !== "shell";
+    }
+    if (this.focused && !this.focused.visible) this.focus(null);
+    if (this.hovered && !this.hovered.visible) this.setHovered(null, 0, 0);
+  }
+
   setPlaying(playing: boolean): void {
     this.playing = playing;
   }
@@ -255,15 +292,21 @@ export class RobotArmViewer {
   }
 
   get focusedPart(): PartInfo | null {
-    return this.parts.find((part) => part.mesh === this.focused) ?? null;
+    return this.focused ? this.byMesh.get(this.focused) ?? null : null;
+  }
+
+  /** The internal part closest to a chip: what the chip "hears" first. */
+  nearestInternal(sensor: SensorInfo): PartInfo | null {
+    const candidates = this.parts.filter((part) => part.layer === "internal" && part.sensor === sensor);
+    return candidates.sort((a, b) => a.sensorDistance - b.sensorDistance)[0] ?? null;
   }
 
   frame(immediate: boolean): void {
     const radius = this.radii[this.view];
     const center = this.centers[this.view];
-    this.controls.minDistance = radius * 1.05;
+    this.controls.minDistance = radius * 0.6;
     this.controls.maxDistance = radius * 3.4;
-    const distance = radius * 2.05;
+    const distance = radius * (this.view === "exploded" ? 1.9 : 2.05);
     if (immediate) {
       this.controls.target.copy(center);
       const direction = new THREE.Vector3(0.62, 0.42, 0.66).normalize();
@@ -286,18 +329,17 @@ export class RobotArmViewer {
     this.camera.updateProjectionMatrix();
   }
 
+  private pickables(): THREE.Mesh[] {
+    return this.parts.filter((part) => part.mesh.visible).map((part) => part.mesh);
+  }
+
   private trackPointer(event: PointerEvent): void {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     this.pointerInside = true;
-    this.hoverAt(event.clientX, event.clientY);
-  }
-
-  private hoverAt(clientX: number, clientY: number): void {
-    if (!this.root) return;
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hits = this.raycaster.intersectObjects(this.treated.map((part) => part.mesh), false);
-    this.setHovered((hits[0]?.object as THREE.Mesh | undefined) ?? null, clientX, clientY);
+    const hit = this.raycaster.intersectObjects(this.pickables(), false)[0];
+    this.setHovered((hit?.object as THREE.Mesh | undefined) ?? null, event.clientX, event.clientY);
   }
 
   private setHovered(mesh: THREE.Mesh | null, clientX: number, clientY: number): void {
@@ -306,8 +348,7 @@ export class RobotArmViewer {
       emphasize(this.treated, this.focused, this.hovered);
       this.renderer.domElement.style.cursor = mesh ? "pointer" : "";
     }
-    const part = mesh ? this.parts.find((candidate) => candidate.mesh === mesh) ?? null : null;
-    this.onHover?.(part, clientX, clientY);
+    this.onHover?.(mesh ? this.byMesh.get(mesh) ?? null : null, clientX, clientY);
   }
 
   private pick(event: MouseEvent): void {
@@ -315,9 +356,9 @@ export class RobotArmViewer {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hit = this.raycaster.intersectObjects(this.treated.map((part) => part.mesh), false)[0];
+    const hit = this.raycaster.intersectObjects(this.pickables(), false)[0];
     const mesh = (hit?.object as THREE.Mesh | undefined) ?? null;
-    const part = mesh ? this.parts.find((candidate) => candidate.mesh === mesh) ?? null : null;
+    const part = mesh ? this.byMesh.get(mesh) ?? null : null;
     this.focus(part && part.mesh === this.focused ? null : part);
   }
 
@@ -334,6 +375,15 @@ export class RobotArmViewer {
 
     if (this.mixer && this.playing) this.mixer.update(delta * this.speed);
 
+    // Sensor chips breathe teal so they read as live instruments, not trim.
+    const pulse = 0.55 + 0.45 * Math.sin(this.clock.elapsedTime * 2.4);
+    for (const sensor of this.sensors) {
+      if (sensor.mesh === this.focused || sensor.mesh === this.hovered) continue;
+      const material = sensor.mesh.material as THREE.MeshStandardMaterial;
+      material.emissive.copy(EDGE);
+      material.emissiveIntensity = 0.25 + pulse * 0.5;
+    }
+
     // Camera glide toward the framing for the current view.
     if (this.frameGoal) {
       const { center, distance } = this.frameGoal;
@@ -349,34 +399,10 @@ export class RobotArmViewer {
     if (this.pointerInside && this.root) {
       // The arm moves under a still cursor: re-test hover each frame.
       this.raycaster.setFromCamera(this.pointer, this.camera);
-      const hit = this.raycaster.intersectObjects(this.treated.map((part) => part.mesh), false)[0];
+      const hit = this.raycaster.intersectObjects(this.pickables(), false)[0];
       const mesh = (hit?.object as THREE.Mesh | undefined) ?? null;
       if (mesh !== this.hovered) this.setHovered(mesh, -1, -1);
     }
     this.renderer.render(this.scene, this.camera);
   }
-}
-
-/** Octopus mount marker: a dark puck with a teal ring, like the scene's sensor markers. */
-function makeMountPuck(): THREE.Group {
-  const group = new THREE.Group();
-  group.name = "mount-puck";
-  const puck = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.042, 0.042, 0.022, 32),
-    new THREE.MeshStandardMaterial({ color: "#0a1522", metalness: 0.3, roughness: 0.6 }),
-  );
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(0.046, 0.006, 12, 48),
-    new THREE.MeshStandardMaterial({ color: EDGE, emissive: EDGE, emissiveIntensity: 0.9, roughness: 0.4 }),
-  );
-  ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.012;
-  const dot = new THREE.Mesh(
-    new THREE.SphereGeometry(0.012, 16, 12),
-    new THREE.MeshStandardMaterial({ color: EDGE, emissive: EDGE, emissiveIntensity: 1.2 }),
-  );
-  dot.position.y = 0.02;
-  for (const mesh of [puck, ring, dot]) mesh.raycast = () => undefined;
-  group.add(puck, ring, dot);
-  return group;
 }

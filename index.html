@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <title>Six-axis robot arm — CAD animation</title>
-    <meta name="description" content="Six-axis robot arm CAD model in the Nautilus model-library style: assembled and exploded views, both articulated." />
+    <meta name="description" content="Six-axis robot arm CAD model in the Nautilus model-library style: assembled and exploded views, shell and internals, three sensor chips with stacked frequency spectra." />
     <link rel="preload" href="/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/ibm-plex-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2304080f'/%3E%3Crect x='3' y='3' width='10' height='10' fill='none' stroke='%232bd9c7'/%3E%3C/svg%3E" />
@@ -17,7 +17,7 @@
           <p class="kicker">Model library · CAD animation</p>
           <h1>Six-axis robot arm</h1>
         </div>
-        <span class="chip" title="Generated model, not a customer machine">DEMO MODEL</span>
+        <span class="chip" title="Generated model and seeded signals, not a customer machine">DEMO MODEL</span>
       </header>
 
       <main class="stage" aria-label="3D model view">
@@ -28,6 +28,10 @@
             <button type="button" data-view="assembled" aria-pressed="true">Assembled</button>
             <button type="button" data-view="exploded" aria-pressed="false">Exploded</button>
           </div>
+          <div class="segmented" role="group" aria-label="Layers">
+            <button type="button" data-layers="full" aria-pressed="true">Full model</button>
+            <button type="button" data-layers="internals" aria-pressed="false">Internals</button>
+          </div>
           <button type="button" id="motion" aria-pressed="true">Pause motion</button>
           <button type="button" id="reset-view">Reset view</button>
         </div>
@@ -35,6 +39,14 @@
         <div class="tooltip" id="tooltip" hidden></div>
 
         <aside class="panel" aria-label="Model details">
+          <section id="spectra-section" class="spectra-section" aria-label="Sensor spectra" hidden>
+            <p class="kicker">Sensor spectra</p>
+            <div id="spectra"></div>
+          </section>
+          <section class="hint-section">
+            <p class="kicker">Read a part</p>
+            <p class="hint">Click any part on the model or in the list. The nearest sensor chip's frequency histograms stack below, one per modality. Switch to <strong>Internals</strong> to drop the shell; the chips stay.</p>
+          </section>
           <section>
             <p class="kicker">Motion</p>
             <dl class="facts">
@@ -58,7 +70,8 @@
             <dl class="facts">
               <div><dt>Units</dt><dd>meters · +Y up · floor origin</dd></div>
               <div><dt>Joints</dt><dd id="fact-joints">—</dd></div>
-              <div><dt>Mounts</dt><dd id="fact-mounts">—</dd></div>
+              <div><dt>Sensors</dt><dd id="fact-sensors">—</dd></div>
+              <div><dt>Layers</dt><dd>extras.layer = shell · internal · sensor</dd></div>
               <div><dt>Materials</dt><dd id="fact-materials">—</dd></div>
               <div><dt>Files</dt><dd>Six_Axis_Robot_Arm_Assembled.glb<br />Six_Axis_Robot_Arm_Exploded.glb</dd></div>
             </dl>
