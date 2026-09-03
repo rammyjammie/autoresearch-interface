@@ -158,8 +158,19 @@ export class RobotArmViewer {
   }
 
   private setModel(gltf: GLTF): void {
-    if (this.root) this.scene.remove(this.root);
+    if (this.root) {
+      // Swapping models in the loadout: release the old one's GPU buffers.
+      this.scene.remove(this.root);
+      for (const { mesh, material, edges, edgeMaterial } of this.treated) {
+        mesh.geometry.dispose();
+        material.dispose();
+        edges.geometry.dispose();
+        edgeMaterial.dispose();
+      }
+    }
     this.mixer?.stopAllAction();
+    this.focused = null;
+    this.hovered = null;
 
     const root = gltf.scene as THREE.Group;
     this.root = root;
@@ -238,10 +249,16 @@ export class RobotArmViewer {
     for (const { mesh } of this.treated) bounds.expandByObject(mesh);
     const sphere = new THREE.Sphere();
     bounds.getBoundingSphere(sphere);
-    // The arm sweeps ±55° and reaches forward: pad the rest-pose sphere so
-    // the cycle stays in frame. The exploded stack is tall and mostly
-    // vertical, so it needs less padding to stay in view.
-    this.radii[view] = Math.max(sphere.radius * (view === "exploded" ? 1.1 : 1.2), 1.2);
+    // An articulated model sweeps away from its rest pose (the arm reaches
+    // ±55° and forward), so its rest-pose sphere gets padding; a fixed
+    // frame with a spinning rotor can sit tight. The exploded stack is tall
+    // and mostly vertical, so it needs less padding to stay in view.
+    let articulated = false;
+    this.root!.traverse((node) => {
+      if (node.userData.joint) articulated = true;
+    });
+    const padding = view === "exploded" ? (articulated ? 1.1 : 0.95) : articulated ? 1.2 : 0.9;
+    this.radii[view] = Math.max(sphere.radius * padding, 0.6);
     this.centers[view] = new THREE.Vector3(0, (bounds.min.y + bounds.max.y) * (view === "exploded" ? 0.52 : 0.45), 0);
   }
 

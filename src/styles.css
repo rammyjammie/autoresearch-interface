@@ -104,6 +104,26 @@ button {
   text-transform: uppercase;
 }
 
+.loadout {
+  margin-left: auto;
+}
+
+.loadout button[aria-pressed="true"] {
+  pointer-events: none;
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .loadout {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
 .chip {
   display: inline-flex;
   min-height: 26px;

@@ -161,7 +161,7 @@ export function renderSpectra(container: HTMLElement, tooltip: HTMLElement, host
   const meta = el("span", undefined);
   meta.textContent = part.layer === "sensor"
     ? `Chip on ${sensor.label} · reading ${subject.label.toLowerCase()} at ${subject.sensorDistance.toFixed(2)} m`
-    : `${part.assembly} · ${part.material} · chip: ${sensor.label} at ${subject.sensorDistance.toFixed(2)} m`;
+    : `${part.assembly.replace(/_/g, " ")} · ${part.material} · chip: ${sensor.label} at ${subject.sensorDistance.toFixed(2)} m`;
   header.append(meta);
   container.append(header);
 

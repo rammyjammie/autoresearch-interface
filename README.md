@@ -1,83 +1,97 @@
-# Six-axis robot arm — CAD animation
+# CAD animation loadout
 
-A six-axis industrial robot arm authored to the Nautilus model-library
-contract, modeled down to its mechanism: servo stacks, harmonic drives,
-crossed-roller bearings, drive shafts, bevel pinions, a rack-and-pinion
-gripper. The viewer shows it **assembled** or **exploded**, with the external
-shell **on** or **off**, and the same pick-and-place cycle keeps articulating
-every joint (and spinning every rotor) in all four combinations. Three flat
-sensor chips sit on the base, shoulder, and elbow housings; click any part
-and the nearest chip's frequency histograms stack up, one per modality.
+Procedural machine models authored to the Nautilus model-library contract,
+each shipped as an **assembled / exploded** GLB pair with an embedded
+animation clip, an external **shell** layer that can be switched off, and
+flat **sensor chips** whose seeded frequency spectra stack up when you click
+a part. One viewer, one model picker, two models so far:
 
-- `public/models/Six_Axis_Robot_Arm_Assembled.glb` — drop-in for the
-  Nautilus model library (`public/models/library/`).
-- `public/models/Six_Axis_Robot_Arm_Exploded.glb` — the matching exploded
-  variant, same hierarchy and animation, offsets baked into node positions.
-- `scripts/build-robot-arm.mjs` — the generator. The model is procedural, so
-  every dimension, material, layer tag, offset, and pose lives in one file.
+| Model | Parts | Clip | What's inside |
+| --- | --- | --- | --- |
+| **Six-axis robot arm** | 141 (120 internal, 18 shell, 3 chips) | `Pick_And_Place`, 9.6 s, 14 tracks | Servo stacks, harmonic drives, crossed-roller bearings, wrist drive shafts and bevel pinions, rack-and-pinion gripper; rotors spin at their reduction ratio |
+| **Induction motor** | 34 (22 internal, 9 shell, 3 chips) | `Run`, 6 s, 1 track | Foot-mounted TEFC frame with fins, end bells, fan cowl and terminal box over a stator with copper end windings, a cage rotor with end rings, keyed shaft, two ball bearings, and the cooling fan |
+
+- `public/models/<Model>_Assembled.glb` — drop-in for the Nautilus library
+  (`public/models/library/`).
+- `public/models/<Model>_Exploded.glb` — same hierarchy and animation,
+  explode offsets baked into node positions.
+- `public/models/manifest.json` — the loadout the viewer's picker reads.
+- `scripts/lib/cad.mjs` — shared toolkit: materials, primitives (rings,
+  gears, tori, tubes, radial arrays), part factory, sensor chips, export.
+- `scripts/models/*.mjs` — one module per model; `scripts/build-models.mjs`
+  runs them all.
 - `src/spectra.ts` — the seeded spectrum synth behind the histograms.
 
 ## Run
 
 ```bash
 npm install
-npm run dev        # viewer at http://127.0.0.1:5173
-npm run model      # regenerate the GLB pair + manifest
+npm run dev        # viewer at http://127.0.0.1:5173  (#induction-motor deep-links the motor)
+npm run model      # regenerate every GLB pair + manifest
 npm run build      # tsc + vite build → dist/
-npm run test:e2e   # Playwright: loads, animates, explodes, drops the shell, reads spectra
+npm run test:e2e   # Playwright: both models — load, animate, explode, drop the shell, read spectra
 ```
 
-Viewer controls: **Assembled / Exploded** (`E`), **Full model / Internals**
-(`I`), **Pause motion** (`Space`), playback speed, **Reset view**. Click a
-part on the model or in the grouped parts list to focus it and open its
-sensor spectra; click a chip to read the internal part it sits over; `Esc`
-clears. Drag to orbit, wheel to zoom; the camera never goes under the floor.
+Viewer controls: model picker in the top bar, **Assembled / Exploded**
+(`E`), **Full model / Internals** (`I`), **Pause motion** (`Space`),
+playback speed, **Reset view**. Click a part on the model or in the grouped
+parts list to focus it and open its sensor spectra; click a chip to read the
+internal part it sits over; `Esc` clears. Drag to orbit, wheel to zoom; the
+camera never goes under the floor.
 
 ## Model contract
 
 Mirrors `src/models/registry.ts` in machine-state-ui, extended with layers:
 
-| Rule | This model |
+| Rule | How the models meet it |
 | --- | --- |
-| Meters, +Y up, origin at floor center | Base plate is 0.72 m square; the arm reaches about 1.4 m |
-| Named parts | 141 meshes: 120 internal, 18 shell, 3 sensor chips |
-| `extras.layer` | `shell` (housings, covers, caps, arm skins), `internal` (mechanism), `sensor` (chips). A parts view hides `shell` and nothing else |
-| `extras.assembly` | `Base`, `J1` … `J6`, `Gripper` — the parts list groups on it |
-| Joint empties | `J1_Base_Rotation` (Y), `J2_Shoulder` (X), `J3_Elbow` (X), `J4_Wrist_Roll` (Z), `J5_Wrist_Pitch` (X), `J6_Tool_Flange` (Z) |
-| Sensor chips | `Sensor_Chip_Base`, `_Shoulder`, `_Elbow`: 32 mm flat squares with `extras.sensor = { id, label, covers }`. Parented to the joint node that carries their housing, never to the shell mesh, so switching the shell off leaves them in place |
+| Meters, +Y up, origin at floor center | Arm base plate 0.72 m square, ~1.4 m reach; motor is an IEC 132-ish frame, shaft 0.19 m above the floor |
+| Named parts | Library-style names: `J2_Stator_Core`, `Drive_End_Bearing_Outer_Race`, `Cooling_Fan` |
+| `extras.layer` | `shell` (housings, covers, caps, bells, cowl, skins, terminal box), `internal` (mechanism and structure), `sensor` (chips). A parts view hides `shell` and nothing else |
+| `extras.assembly` | Arm: `Base`, `J1` … `J6`, `Gripper`. Motor: `Frame`, `Stator`, `Drive_End`, `Non_Drive_End`, `Rotor`. The parts list groups on it |
+| Joint empties | Arm: `J1_Base_Rotation` (Y) … `J6_Tool_Flange` (Z). Motor: none — fixed frame, spinning `Rotor_Assembly` |
+| Sensor chips | 32 mm flat squares with `extras.sensor = { id, label, covers }`, parented to a node that survives the shell being hidden, never to a shell mesh |
 | Authored PBR, kept verbatim | `CAD Light Gray`, `Machined Metal`, `Dark Metal` (the library's exact factors) plus `Copper Winding` |
-| Animation | One clip, `Pick_And_Place`, 9.6 s loop, 14 quaternion tracks: six joints, two gripper jaws, six rotor assemblies spinning at their reduction ratio. Rotation only, so explode offsets on node positions never fight the clip |
-| Explode | Every movable node carries `extras.explode: [x, y, z]` (offset from its parent, parent frame). Internals fan out along their axis; shells lift sideways off the mechanism. The viewer tweens the assembled file 0 → 1; the exploded file bakes the offsets |
+| Animation | Rotation-only quaternion tracks, so explode offsets on node positions never fight the clip. Motor rotor turns a whole number of times per loop, so the repeat is seamless |
+| Explode | Every movable node carries `extras.explode: [x, y, z]` (offset from its parent, parent frame). The viewer tweens the assembled file 0 → 1; the exploded file bakes the offsets. Arm internals fan along their axis with shells lifted sideways; motor drive-end parts go +X, non-drive-end −X, skin and terminal box +Y |
 
-Per joint the mechanism is: stator core + front/rear copper windings +
-encoder board (static), a rotor assembly (rotor, motor shaft, brake disc,
-encoder disc, wave generator) that spins, then flexspline cup + gear,
-internal-tooth circular spline, and a three-piece crossed-roller output
-bearing, with the output flange on the moving link. J5 and J6 servos sit in
-the forearm and reach the wrist through parallel shafts and bevel pinions.
-
-Registering it in Nautilus is one row in `CAD_LIBRARY_MACHINES`:
+Registering a model in Nautilus is one row in `CAD_LIBRARY_MACHINES`:
 
 ```ts
 ["six-axis-robot-arm", "Six_Axis_Robot_Arm", "Six-axis robot arm"],
+["induction-motor-detailed", "Induction_Motor", "Induction motor (detailed)"],
 ```
 
 The Nautilus `GltfModel` does not yet play glTF animations or read
-`extras.layer`; an `AnimationMixer` on its prepared clone and a
-visibility pass on the `shell` layer are the two additions needed there.
-Note that three's GLTFLoader strips `:` from node names, so `mount:` empties
-arrive as `mountfront`; this model carries its chip labels in extras instead.
+`extras.layer`; an `AnimationMixer` on its prepared clone and a visibility
+pass on the `shell` layer are the two additions needed there. Note that
+three's GLTFLoader strips `:` from node names, so `mount:` empties arrive
+as `mountfront`; these models carry chip labels in extras instead.
+
+## Adding a model
+
+1. Create `scripts/models/<name>.mjs` exporting `{ id, file, label,
+   description, build(rootName) → { root, … }, clip(built) → AnimationClip }`
+   on top of `scripts/lib/cad.mjs`.
+2. Tag every mesh with a layer and an assembly, keep chips off the shell,
+   give movable nodes an `explode` offset, keep tracks rotation-only.
+3. Add it to `MODELS` in `scripts/build-models.mjs`, run `npm run model`.
+4. If its parts introduce a new family (fan, rack, …), teach
+   `src/spectra.ts` what lines it radiates, and add its assembly names to
+   `ASSEMBLY_LABELS` in `src/main.ts`.
 
 ## Sensor spectra
 
 Everything is seeded and deterministic (see `src/spectra.ts`): a 1/f floor
 with characteristic lines by part family — rotor 1×/2×/3×, 2× line and slot
 harmonics for stators and windings, gear-mesh with sidebands for splines and
-pinions, BPFO/BPFI for bearings, a structural resonance hump for shells and
-spars — attenuated by the chip's distance from the part and weighted per
-modality (flux favors electrical lines, audio favors mesh). Five modalities
-stack as small multiples: Accel X/Y/Z (3.2 kHz), Magnetic flux (1 kHz),
-Audio (48 kHz). Toggle any of them off and the rest re-stack.
+pinions, blade-pass for fans, BPFO/BPFI for bearings (at output speed on the
+arm's reduced joints, at rotor speed on the motor's shaft bearings), a
+structural resonance hump for shells and spars — attenuated by the chip's
+distance from the part and weighted per modality (flux favors electrical
+lines, audio favors mesh). Five modalities stack as small multiples: Accel
+X/Y/Z (3.2 kHz), Magnetic flux (1 kHz), Audio (48 kHz). Toggle any off and
+the rest re-stack.
 
 The histograms follow the dataviz spec: ≤ 24 px bars with a 4 px rounded
 data-end and a 2 px surface gap, hairline gridlines, one direct label on

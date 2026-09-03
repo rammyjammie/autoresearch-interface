@@ -1,36 +1,57 @@
 {
-  "generated": "2026-09-03T16:38:55.189Z",
+  "generated": "2026-09-03T18:33:57.602Z",
   "models": [
-    "Six_Axis_Robot_Arm"
-  ],
-  "animation": {
-    "clip": "Pick_And_Place",
-    "seconds": 9.6
-  },
-  "files": [
     {
-      "view": "assembled",
-      "file": "Six_Axis_Robot_Arm_Assembled.glb",
+      "id": "six-axis-robot-arm",
+      "label": "Six-axis robot arm",
+      "description": "Six-axis industrial arm modeled down to its mechanism: servo stacks, harmonic drives, crossed-roller bearings, wrist drive shafts, a rack-and-pinion gripper.",
+      "files": {
+        "assembled": {
+          "file": "Six_Axis_Robot_Arm_Assembled.glb",
+          "bytes": 2048352
+        },
+        "exploded": {
+          "file": "Six_Axis_Robot_Arm_Exploded.glb",
+          "bytes": 2048928
+        }
+      },
       "parts": 141,
       "layers": {
         "shell": 18,
         "internal": 120,
         "sensor": 3
       },
-      "tracks": 14,
-      "bytes": 2048416
+      "clip": {
+        "name": "Pick_And_Place",
+        "seconds": 9.6,
+        "tracks": 14
+      }
     },
     {
-      "view": "exploded",
-      "file": "Six_Axis_Robot_Arm_Exploded.glb",
-      "parts": 141,
+      "id": "induction-motor",
+      "label": "Induction motor",
+      "description": "Foot-mounted TEFC induction motor: finned frame, two end bells, fan cowl, terminal box over a stator, cage rotor, keyed shaft, two bearings, and the fan.",
+      "files": {
+        "assembled": {
+          "file": "Induction_Motor_Assembled.glb",
+          "bytes": 443676
+        },
+        "exploded": {
+          "file": "Induction_Motor_Exploded.glb",
+          "bytes": 443616
+        }
+      },
+      "parts": 34,
       "layers": {
-        "shell": 18,
-        "internal": 120,
+        "shell": 9,
+        "internal": 22,
         "sensor": 3
       },
-      "tracks": 14,
-      "bytes": 2048996
+      "clip": {
+        "name": "Run",
+        "seconds": 6,
+        "tracks": 1
+      }
     }
   ]
 }

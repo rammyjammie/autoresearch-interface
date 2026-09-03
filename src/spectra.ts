@@ -47,8 +47,12 @@ export interface Spectrum {
 }
 
 // Rotor speeds per joint servo in Hz (so 1× lines land at distinct places).
+// Parts without a joint prefix belong to a line-fed machine: a four-pole
+// induction motor at 1,770 rpm.
 const ROTOR_HZ: Record<string, number> = { J1: 45, J2: 52, J3: 58, J4: 66, J5: 74, J6: 80 };
 const LINE_HZ = 60;
+const INDUCTION_ROTOR_HZ = 29.5;
+const FAN_BLADES = 7;
 
 interface Family {
   /** Which spectral lines this part radiates, with relative strengths. */
@@ -57,21 +61,24 @@ interface Family {
   hump?: { hz: number; width: number; strength: number };
 }
 
-function jointOf(part: string): string {
-  return part.match(/^J(\d)_/)?.[0].slice(0, 2) ?? "J2";
+function rotorHzFor(part: string): number {
+  const joint = part.match(/^J(\d)_/)?.[0].slice(0, 2);
+  return joint ? ROTOR_HZ[joint] ?? 52 : INDUCTION_ROTOR_HZ;
 }
 
 /** The spectral signature of a part, keyed off its library name. */
 function familyFor(part: string): Family {
-  const joint = jointOf(part);
-  const rotor = ROTOR_HZ[joint] ?? 52;
+  const rotor = rotorHzFor(part);
   const name = part.toLowerCase();
   const lines: Family["lines"] = [];
   let hump: Family["hump"];
 
-  if (/rotor|motor_shaft|wave_generator/.test(name)) {
+  if (/fan|hub/.test(name)) {
+    lines.push({ hz: rotor * FAN_BLADES, label: "Blade pass", strength: 1 }, { hz: rotor, label: "1× rotor", strength: 0.5 }, { hz: rotor * FAN_BLADES * 2, label: "2× blade pass", strength: 0.35 });
+    hump = { hz: 1100, width: 300, strength: 0.3 };
+  } else if (/rotor|motor_shaft|wave_generator|end_ring|shaft_key/.test(name)) {
     lines.push({ hz: rotor, label: "1× rotor", strength: 1 }, { hz: rotor * 2, label: "2× rotor", strength: 0.45 }, { hz: rotor * 3, label: "3×", strength: 0.2 });
-  } else if (/stator|winding|encoder_board/.test(name)) {
+  } else if (/stator|winding|encoder_board|terminal/.test(name)) {
     lines.push({ hz: LINE_HZ * 2, label: "2× line", strength: 0.9 }, { hz: rotor * 12, label: "Slot pass", strength: 0.55 }, { hz: rotor * 24, label: "2× slot", strength: 0.25 });
   } else if (/brake|encoder_disc/.test(name)) {
     lines.push({ hz: rotor, label: "1× rotor", strength: 0.6 }, { hz: rotor * 0.5, label: "½× rub", strength: 0.35 });
@@ -80,10 +87,12 @@ function familyFor(part: string): Family {
     const shaftHz = /flexspline|circular/.test(name) ? rotor / 30 : rotor / 4;
     const mesh = teeth * shaftHz * (/flexspline|circular/.test(name) ? 30 : 1);
     lines.push({ hz: mesh, label: "Gear mesh", strength: 1 }, { hz: mesh - shaftHz * 4, label: "Sideband", strength: 0.3 }, { hz: mesh + shaftHz * 4, label: "Sideband", strength: 0.3 }, { hz: mesh * 2, label: "2× mesh", strength: 0.4 });
-  } else if (/bearing|race|rollers/.test(name)) {
-    const outputHz = rotor / 30;
-    const n = 17;
-    lines.push({ hz: outputHz * n * 0.4, label: "BPFO", strength: 0.8 }, { hz: outputHz * n * 0.6, label: "BPFI", strength: 0.55 }, { hz: outputHz * n * 0.8, label: "2× BPFO", strength: 0.3 });
+  } else if (/bearing|race|rollers|balls/.test(name)) {
+    // Robot joint bearings turn at output speed (after the reduction);
+    // the motor's shaft bearings turn at rotor speed.
+    const shaftHz = /^j\d_/.test(name) ? rotor / 30 : rotor;
+    const n = /^j\d_/.test(name) ? 17 : 9;
+    lines.push({ hz: shaftHz * n * 0.4, label: "BPFO", strength: 0.8 }, { hz: shaftHz * n * 0.6, label: "BPFI", strength: 0.55 }, { hz: shaftHz * n * 0.8, label: "2× BPFO", strength: 0.3 });
     hump = { hz: 900, width: 260, strength: 0.35 };
   } else if (/shaft|flange/.test(name)) {
     lines.push({ hz: rotor / 30, label: "1× output", strength: 0.7 }, { hz: rotor, label: "1× rotor", strength: 0.35 });
@@ -96,14 +105,14 @@ function familyFor(part: string): Family {
     // Shells, spars, ribs, frames, plates: structure rings at a resonance
     // and carries whatever the nearest drive puts into it.
     lines.push({ hz: rotor, label: "1× rotor", strength: 0.4 });
-    hump = { hz: /shell|cover|cap/.test(name) ? 480 : 720, width: 180, strength: 0.7 };
+    hump = { hz: /shell|cover|cap|housing|bell|cowl|fins|lid|box/.test(name) ? 480 : 720, width: 180, strength: 0.7 };
   }
   return { lines, hump };
 }
 
 /** Per-modality weighting of the mechanical lines. */
 function weight(modality: ModalityId, label: string, part: string): number {
-  const axis = /_Rotation|_Roll|_Flange/.test(part) ? "z" : "x";
+  const axis = /_Rotation|_Roll|_Flange|^Shaft|End_Ring/.test(part) ? "z" : "x";
   switch (modality) {
     case "flux":
       return /line|slot|rotor/i.test(label) ? 1.2 : 0.12;

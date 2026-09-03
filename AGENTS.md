@@ -2,19 +2,24 @@
 
 ## What this repo is
 
-A standalone Vite + three.js viewer for a procedurally generated six-axis
-robot arm, authored to the Nautilus (`innova-harmonics/machine-state-ui`)
-model-library contract and modeled down to its mechanism. It exists to
-prove a CAD-animation pipeline: the same GLB is shown assembled or exploded,
-with the external shell on or off, and the embedded clip keeps running in
-every combination. Three sensor chips on the housings open stacked,
+A standalone Vite + three.js viewer for a loadout of procedurally generated
+machine models (a six-axis robot arm, an induction motor), authored to the
+Nautilus (`innova-harmonics/machine-state-ui`) model-library contract. It
+exists to prove a CAD-animation pipeline: each GLB is shown assembled or
+exploded, with the external shell on or off, and its embedded clip keeps
+running in every combination. Sensor chips on the housings open stacked,
 seeded frequency spectra for whichever part is clicked.
 
 ## Rules
 
-- **The model is code.** Change `scripts/build-robot-arm.mjs` and run
-  `npm run model`; never hand-edit or replace the GLBs with opaque exports.
-  Commit the regenerated GLBs and `manifest.json` together with the script.
+- **The models are code.** Change `scripts/models/<model>.mjs` (on the
+  shared toolkit in `scripts/lib/cad.mjs`) and run `npm run model`; never
+  hand-edit or replace the GLBs with opaque exports. Commit the regenerated
+  GLBs and `manifest.json` together with the script. New models follow the
+  "Adding a model" steps in the README.
+- **Simple interiors are fine; nameable parts are required.** The motor is
+  deliberately a couple of dozen parts. Model what a technician would name
+  and what a sensor would hear (bearings, windings, rotor, fan) and stop.
 - **Keep the authoring contract.** Meters, +Y up, floor-center origin,
   named parts, `J<n>_` joint empties, `extras.layer` on every mesh
   (`shell` / `internal` / `sensor`), `extras.assembly`, chips parented to
