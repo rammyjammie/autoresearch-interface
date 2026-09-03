@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.vite/
+test-results/
+playwright-report/
+.playwright/
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

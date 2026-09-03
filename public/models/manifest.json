@@ -1,0 +1,24 @@
+{
+  "generated": "2026-09-03T16:02:40.566Z",
+  "models": [
+    "Six_Axis_Robot_Arm"
+  ],
+  "animation": {
+    "clip": "Pick_And_Place",
+    "seconds": 9.6
+  },
+  "files": [
+    {
+      "view": "assembled",
+      "file": "Six_Axis_Robot_Arm_Assembled.glb",
+      "parts": 28,
+      "bytes": 299928
+    },
+    {
+      "view": "exploded",
+      "file": "Six_Axis_Robot_Arm_Exploded.glb",
+      "parts": 28,
+      "bytes": 300100
+    }
+  ]
+}
