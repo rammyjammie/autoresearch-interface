@@ -15,6 +15,12 @@ The motor's root carries `extras.signature` (rotor 29.5 Hz, line 60 Hz, 36
 slots, 28 bars, 7 blades, 9 balls), so slot-pass, bar-pass, blade-pass and
 bearing lines in the spectra are derived from the geometry's own counts.
 
+Every motor part also carries `extras.note`: what it does, how it fails,
+and what a sensor sees when it does. The viewer shows the note in the hover
+tooltip, under the spectra header when a part is selected, and in the
+**Research guide** section of the panel, which lists every noted part by
+assembly. Models without notes simply hide the section.
+
 ### Where the motor's sensors sit, and why
 
 - **Drive-end bearing housing, horizontal radial (3 o'clock).** Bearings

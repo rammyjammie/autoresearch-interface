@@ -33,6 +33,45 @@ const DISPLAY_REV_PER_SECOND = 1;
 // Electrical/mechanical signature (four-pole, 60 Hz, ~1,770 rpm).
 const SIGNATURE = { rotorHz: 29.5, lineHz: 60, statorSlots: 36, rotorBars: 28, fanBlades: 7, bearingBalls: 9 };
 
+// Why each part matters to a researcher: what it does, what fails, and what
+// a sensor sees when it does. Exported as `extras.note` on the mesh.
+const NOTES = {
+  Mounting_Foot_Front: "Soft foot: a foot that does not seat flat twists the frame and the bearing alignment with it. Reads as 2× line and 1× with a large vertical/horizontal amplitude difference. The chips' mounting path to ground runs through here.",
+  Mounting_Foot_Rear: "Second foot; a shim under one foot is the classic soft-foot experiment. Same 1× / 2× line signature as the front foot.",
+  Foot_Bridge: "Cast link from frame to feet. Carries the frame resonance (~480 Hz here) that colors every reading, and any looseness between frame and base.",
+  Frame_Housing: "The structure the chips mount on. Its resonance is the background of every spectrum; hot spots on the frame betray stator faults before anything else does.",
+  Frame_Fins: "Thermal path to air. Fouled or damaged fins raise winding temperature and shorten insulation life; the fins are why the frame is finned at all.",
+  Terminal_Box: "Where current is measured (MCSA) and where connections loosen. A loose or lost phase shows as single-phasing: strong 2× line and a hot frame.",
+  Terminal_Box_Lid: "Silhouette. Opens for current-clamp access; no signal of its own.",
+  Stator_Core: "Laminated core. Its 36 slots set slot-pass (36 × rotor speed); core looseness or eccentricity puts rotor-speed sidebands around it. Lamination shorts show as local heating.",
+  Stator_Coils: "One coil side per slot. Turn-to-turn insulation faults are phase-specific: 2× line and its harmonics, unbalanced current, a hot coil group. The most common electrical failure.",
+  Winding_Drive_End: "End-turn overhang: the most vulnerable insulation on the machine (vibration, thermal cycling, contamination). Usually the hottest spot; partial discharge on high-voltage machines.",
+  Winding_Non_Drive_End: "Same as the drive-end overhang, on the fan side. Runs slightly cooler; compare end to end for a cooling fault.",
+  Drive_End_Bearing_Inner_Race: "Turns with the shaft, so an inner-race defect reads as BPFI modulated at 1× (sidebands at rotor speed). Load-zone entry and exit make the amplitude breathe.",
+  Drive_End_Bearing_Balls: "Rolling-element defects: BSF and its 2× harmonic with cage (FTF) sidebands. Lubrication starvation raises the broadband floor here first.",
+  Drive_End_Bearing_Outer_Race: "Stationary race: the commonest bearing fault. Clean BPFO lines and harmonics, no rotor-speed modulation. The drive-end chip sits on this housing.",
+  Drive_End_Bell: "Bearing housing and the drive-end chip's mount. A loose bearing fit shows as BPFO with 1× harmonics; the bell also carries misalignment loads from the coupling.",
+  Drive_End_Bearing_Cap: "Grease seal and contamination path. Axial measurements are taken here for thrust and angular misalignment.",
+  Non_Drive_End_Bearing_Inner_Race: "As at the drive end: BPFI with rotor-speed sidebands. On inverter-fed machines this bearing is where shaft currents pit the races (fluting, high-frequency hash).",
+  Non_Drive_End_Bearing_Balls: "BSF and cage lines; the smaller bearing, so a higher BSF than the drive end for the same speed.",
+  Non_Drive_End_Bearing_Outer_Race: "BPFO for the non-drive-end bearing; the non-drive-end chip sits over it. Compare with the drive end to tell bearing wear from coupling problems.",
+  Non_Drive_End_Bell: "Non-drive-end bearing housing and chip mount. Fan-side resonance and blade pass are strongest here.",
+  Fan_Cowl: "Air path. A blocked cowl overheats the machine; it is also the acoustic aperture that makes blade pass audible.",
+  Fan_Cowl_Grille: "Silhouette and airflow restriction; no signal of its own.",
+  Shaft: "Imbalance (1×), misalignment (2×), a bent shaft (1× with strong axial). Torsional lines appear under pulsating load.",
+  Shaft_Key: "Stress riser at the keyway. A loose or missing key gives a 1× impact and, eventually, a cracked shaft.",
+  Coupling_Half: "Angular and parallel misalignment live here: 2× rotor dominates, with axial 1×. Coupling wear adds harmonics; a locked coupling transmits the load's faults into the motor.",
+  Rotor_Core: "Eccentricity: a rotor off-center in the air gap modulates flux, putting rotor-speed sidebands around slot pass and a strong 1× in flux. Thermal bow after a hot restart looks the same.",
+  Rotor_Bars: "The cage. Broken bars are the signature rotor fault: current sidebands at ±2·slip·line around line frequency, rising with load. The 28 bars set bar-pass (28 × rotor) in flux.",
+  Rotor_End_Ring_Drive_End: "Bar-to-ring joints crack from thermal cycling; same signature as a broken bar. Hottest part of the rotor during a stalled start.",
+  Rotor_End_Ring_Non_Drive_End: "As the drive-end ring. A cracked ring on one end only gives an asymmetric flux pattern along the axis.",
+  Cooling_Fan: "Blade pass (7 × rotor) in audio and vibration. A damaged blade adds 1× imbalance; a fouled fan adds heat. Its speed is the rotor speed, so it is the easiest tachometer.",
+  Fan_Hub: "Fan-to-shaft fit. A loose hub rattles at 1× and its harmonics and lets the fan walk on the shaft.",
+  Sensor_Chip_Drive_End: "Primary accelerometer: horizontal radial on the loaded bearing housing, usually the highest-amplitude direction on a foot-mounted machine. Bearing lines, 1× imbalance, 2× misalignment.",
+  Sensor_Chip_Non_Drive_End: "Second accelerometer: vertical radial on the fan-side housing, so imbalance and misalignment separate from bearing lines. Blade pass is strongest here.",
+  Sensor_Chip_Frame: "Stray-flux coil and winding temperature on the frame beside the stator: line harmonics, slot pass, bar pass, eccentricity, without opening the machine.",
+};
+
 const part = (assembly) => (name, geometry, material, position, opts = {}) =>
   basePart(name, geometry, material, position, { assembly, ...opts });
 const shell = (assembly) => (name, geometry, position, explode, material = LIGHT_GRAY) =>
@@ -120,6 +159,9 @@ function build(rootName) {
   frame.add(sensorChip("non-drive-end", "Non_Drive_End", [xNDE - 0.015, Y_AXIS + R_FRAME + 0.002, 0], [0, 1, 0], ["Non_Drive_End", "Rotor"], "Non_Drive_End"));
   frame.add(sensorChip("frame", "Frame", [0.09, Y_AXIS + 0.03, R_FRAME + 0.045], [0, 0, 1], ["Frame", "Stator"], "Frame"));
 
+  root.traverse((node) => {
+    if (node.isMesh && NOTES[node.name]) node.userData.note = NOTES[node.name];
+  });
   return { root, rotor };
 }
 

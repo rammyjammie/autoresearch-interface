@@ -403,6 +403,69 @@ button {
   font-size: 11px;
 }
 
+.spectra-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.guide-section details {
+  margin-top: 8px;
+}
+
+.guide-section summary {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.guide-list {
+  margin: 6px 0 0;
+  display: grid;
+  gap: 2px;
+}
+
+.guide-list dt {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.guide-list dt button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.guide-list dt button:hover {
+  color: var(--accent);
+}
+
+.guide-list dt small {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.guide-list dd {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
 .spectra-empty {
   margin: 8px 0;
   color: var(--muted);
@@ -567,6 +630,15 @@ button {
   pointer-events: none;
   transform: translate(14px, 14px);
   white-space: nowrap;
+}
+
+.tooltip p {
+  margin: 6px 0 0;
+  max-width: 300px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: normal;
 }
 
 .tooltip small {

@@ -20,6 +20,8 @@ const partsList = document.getElementById("parts")!;
 const partCount = document.getElementById("part-count")!;
 const spectraSection = document.getElementById("spectra-section")!;
 const spectraHost = document.getElementById("spectra")!;
+const guideSection = document.getElementById("guide-section")!;
+const guideHost = document.getElementById("guide")!;
 const loadout = document.getElementById("loadout")!;
 const modelTitle = document.getElementById("model-title")!;
 const modelDescription = document.getElementById("model-description")!;
@@ -191,8 +193,47 @@ viewer.onHover = (part, clientX, clientY) => {
     ? `Sensor chip · covers ${part.sensor?.covers.map((c) => ASSEMBLY_LABELS[c] ?? c).join(", ") ?? "—"}`
     : `${ASSEMBLY_LABELS[part.assembly] ?? part.assembly} · ${part.layer} · ${part.material}${part.sensor ? ` · chip ${part.sensor.label} ${part.sensorDistance.toFixed(2)} m` : ""}`;
   tooltip.append(name, kind);
+  if (part.note) {
+    const note = document.createElement("p");
+    note.textContent = part.note;
+    tooltip.append(note);
+  }
   tooltip.hidden = false;
 };
+
+/** Every authored research note, grouped by assembly. Hidden when a model has none. */
+function renderGuide(parts: PartInfo[]): void {
+  const noted = parts.filter((part) => part.note);
+  guideSection.hidden = noted.length === 0;
+  const groups = new Map<string, PartInfo[]>();
+  for (const part of noted) groups.set(part.assembly, [...(groups.get(part.assembly) ?? []), part]);
+  guideHost.replaceChildren(
+    ...[...groups.entries()].map(([assembly, members]) => {
+      const details = document.createElement("details");
+      details.open = true;
+      const summary = document.createElement("summary");
+      summary.textContent = ASSEMBLY_LABELS[assembly] ?? assembly.replace(/_/g, " ");
+      const list = document.createElement("dl");
+      list.className = "guide-list";
+      for (const part of members) {
+        const term = document.createElement("dt");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = part.label;
+        button.addEventListener("click", () => viewer.focus(part));
+        term.append(button);
+        const tag = document.createElement("small");
+        tag.textContent = part.layer;
+        term.append(tag);
+        const detail = document.createElement("dd");
+        detail.textContent = part.note!;
+        list.append(term, detail);
+      }
+      details.append(summary, list);
+      return details;
+    }),
+  );
+}
 
 function renderLoadout(): void {
   loadout.replaceChildren(
@@ -224,6 +265,7 @@ async function selectModel(id: string): Promise<void> {
   try {
     const gltf = await viewer.load(`/models/${model.files.assembled.file}`);
     renderParts(viewer.parts);
+    renderGuide(viewer.parts);
     const joints: string[] = [];
     gltf.scene.traverse((node) => {
       if (node.userData.joint) joints.push(`${node.name.split("_")[0]} ${node.userData.joint.axis.toUpperCase()}`);

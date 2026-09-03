@@ -22,6 +22,8 @@ export interface PartInfo {
   /** Nearest sensor chip (rest pose) and its distance in meters. */
   sensor: SensorInfo | null;
   sensorDistance: number;
+  /** Why the part matters to a researcher (`extras.note`), when authored. */
+  note: string | null;
 }
 
 export interface SensorInfo {
@@ -237,6 +239,7 @@ export class RobotArmViewer {
         mesh,
         sensor: nearest,
         sensorDistance: Number.isFinite(distance) ? distance : 0,
+        note: typeof mesh.userData.note === "string" ? mesh.userData.note : null,
       };
     });
     this.byMesh = new Map(this.parts.map((part) => [part.mesh, part]));

@@ -124,6 +124,10 @@ test("induction motor: loads from the loadout and by deep link, spins, explodes,
   await expect(spectra.getByText(/chip: drive end at/)).toBeVisible();
   await expect(spectra.locator("figure.spectrum")).toHaveCount(5);
   await expect(spectra.getByText(/BPFO/).first()).toBeVisible();
+  await expect(spectra.getByText(/Stationary race: the commonest bearing fault/)).toBeVisible();
+  const guide = page.getByRole("region", { name: "Research guide" });
+  await expect(guide).toBeVisible();
+  expect(await guide.locator("dd").count()).toBe(s.parts.length);
   await page.screenshot({ path: "test-results/motor-internals-spectra.png" });
 
   // The cage: bar-pass falls out of the model's own bar count (28 × 29.5 Hz).

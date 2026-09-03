@@ -163,6 +163,7 @@ export function renderSpectra(container: HTMLElement, tooltip: HTMLElement, host
     ? `Chip on ${sensor.label} · reading ${subject.label.toLowerCase()} at ${subject.sensorDistance.toFixed(2)} m`
     : `${part.assembly.replace(/_/g, " ")} · ${part.material} · chip: ${sensor.label} at ${subject.sensorDistance.toFixed(2)} m`;
   header.append(meta);
+  if (part.note) header.append(el("p", "spectra-note", part.note));
   container.append(header);
 
   const spectra = new Map<ModalityId, Spectrum>();
